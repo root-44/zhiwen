@@ -2,7 +2,19 @@
 
 个人项目 | Spring Boot 3 + Spring AI + PgVector + Redis | 2026.09
 
-面向农业领域垂直知识库的智能问答系统:上传 PDF/Word/Markdown 资料,自动完成解析 → 语义切片 → 向量化入库,支持自然语言问答、SSE 流式回答、引用溯源、多轮对话,回答严格基于知识库内容并标注来源,无依据时如实拒答。
+## 业务背景
+
+农业领域技术文档分散在 PDF、Word、Markdown 等格式中,从业者查询病虫害防治、栽培技术等信息时依赖人工翻阅,效率低且难以精准定位。通用大模型缺乏垂直领域知识,容易产生幻觉。本项目基于 RAG 架构,将农业资料向量化入库,用户用自然语言提问即可获得**严格基于知识库、带来源引用**的准确回答。
+
+## 个人职责
+
+**独立完成全栈开发**(后端 + 前端 + 压测),包括:
+
+- RAG 全链路设计:文档解析 → 语义切片 → 向量化 → 检索 → 生成
+- 防幻觉机制:System Prompt 约束 + 检索 0 命中拒答 + 引用编号溯源
+- 检索缓存与 IP 限流(Redis)
+- SSE 流式回答 + 多轮对话(滑动窗口)
+- JMeter 三场景压测 + 性能瓶颈定位与优化
 
 ## 架构
 
@@ -75,7 +87,7 @@ export DASHSCOPE_API_KEY=sk-xxx
 mvn spring-boot:run         # http://localhost:8091
 
 # 3. 前端
-cd ../zhiwen-frontend
+cd frontend
 npm install && npm run dev  # http://localhost:5174
 ```
 
