@@ -1,0 +1,119 @@
+server:
+  port: 8091
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+  tomcat:
+    # 压测期保持连接复用,避免 JMeter 短连接把客户端端口打成 TIME_WAIT;生产可保持
+    max-keep-alive-requests: -1   # 单连接不限制请求数(默认 100 后关闭重建)
+    keep-alive-timeout: 60s
+    threads:
+      max: 200
+      max-queue-capacity: 200
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: zhiwen-backend
+
+  # ============ 数据源:docker-compose 起的 PgVector ============
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:${PG_PORT:5432}/${PG_DB:zhiwen}
+    username: ${PG_USER:zhiwen}
+    password: ${PG_PASSWORD:zhiwen123}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+
+  # ============ Redis:检索结果缓存 ============
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+
+  # ============ SQL 初始化:启动时幂等执行 schema.sql(建业务表) ============
+  sql:
+    init:
+      mode: always
+      continue-on-error: true   # 表已存在时忽略报错,保证幂等
+
+  # ============ Spring AI:OpenAI 兼容协议,对接阿里云百炼 DashScope ============
+  # Chat:qwen-plus;Embedding:text-embedding-v3(1024 维,新用户百万级免费 token)
+  # 百炼兼容模式端点与 OpenAI 协议完全一致,starter 自动拼 /chat/completions、/embeddings
+  # API Key 通过环境变量 DASHSCOPE_API_KEY 注入,不要写进代码库
+  ai:
+    # ============ 外部模型调用重试(仅对可重试错误,4xx 不重试) ============
+    retry:
+      max-attempts: 2              # 最多尝试 2 次(初次 + 1 次重试),避免故障时长时间堆积请求
+      backoff:
+        initial-interval: 500ms   # 首次重试退避
+        multiplier: 2             # 退避倍数
+        max-interval: 2000ms
+      on-client-errors: false     # 4xx(参数错/key错)重试无意义,直接失败
+    openai:
+      # 注意:不要带 /v1 后缀,Spring AI 会自动拼 /v1/chat/completions、/v1/embeddings
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: ${DASHSCOPE_API_KEY:sk-placeholder}
+      chat:
+        options:
+          model: qwen-plus
+          temperature: 0.3          # RAG 场景调低温度,减少幻觉
+          max-tokens: 1024
+      embedding:
+        options:
+          model: text-embedding-v3
+          dimensions: 1024          # 显式指定,与 PgVector vector(1024) 对齐
+    # ============ PgVector 向量库 ============
+    vectorstore:
+      pgvector:
+        initialize-schema: true     # 首次启动自动建 vector_store 表
+        dimensions: 1024            # text-embedding-v3 输出维度
+        index-type: HNSW            # 高召回 + 低延迟的近似最近邻索引
+        distance-type: COSINE_DISTANCE  # 余弦距离,文本相似度标配
+
+# ============ MyBatis-Plus ============
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ============ 日志 ============
+logging:
+  level:
+    com.zhiwen: debug
+    org.springframework.ai: info
+
+# ============ 智问业务配置 ============
+zhiwen:
+  rag:
+    chunk-size: 500        # 切片目标字符数(中文约 500 字 ≈ 700 token)
+    chunk-overlap: 80      # 相邻切片重叠字符数,保证语义不被切断
+    top-k: 5               # 每次检索召回切片数
+    similarity-threshold: 0.45   # 经实测标定:相关内容 0.49-0.65,无关问题 0.33 以下,取中间留安全边界
+    max-history-messages: 10     # 多轮对话带入 LLM 的最近消息条数
+    # —— D6:检索缓存 ——
+    cache-enabled: true          # 场景2:缓存开启,测 Redis 热查询
+    cache-ttl-seconds: 1800      # 命中结果缓存 30 分钟
+    empty-cache-ttl-seconds: 300 # 空结果短缓存 5 分钟,防缓存穿透
+    # —— D6:问答接口 IP 限流 ——
+    rate-limit-max: 20           # 单 IP 每窗口最大请求次数
+    rate-limit-window-seconds: 60
+    # —— D7:外部模型调用超时 ——
+    connect-timeout-seconds: 5   # TCP 建连超时
+    read-timeout-seconds: 60     # 非流式读取超时(长答案)
+    stream-idle-timeout-seconds: 30  # 流式两个 token 间最大空闲

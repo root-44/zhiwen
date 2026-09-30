@@ -1,0 +1,30 @@
+# Maven
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# 日志
+*.log
+logs/
+
+# 本地密钥(如需要可建此文件覆盖配置)
+application-local.yml
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# ============ 前端(frontend/ 子项目) ============
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+frontend/*.local

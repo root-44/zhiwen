@@ -1,0 +1,46 @@
+# 智问 本地基础设施:PostgreSQL 16 + PgVector 扩展 + Redis 7
+# 启动:docker compose up -d
+# 停止:docker compose down
+# 清数据重来:docker compose down -v
+
+services:
+  # ============ PostgreSQL 16 + PgVector ============
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: zhiwen-postgres
+    environment:
+      POSTGRES_DB: zhiwen
+      POSTGRES_USER: zhiwen
+      POSTGRES_PASSWORD: zhiwen123
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - zhiwen-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # 健康检查:同时验证 pgvector 扩展可正常加载
+      test: ["CMD-SHELL", "pg_isready -U zhiwen -d zhiwen && psql -U zhiwen -d zhiwen -c 'CREATE EXTENSION IF NOT EXISTS vector;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============ Redis 7:检索缓存 + 限流 ============
+  redis:
+    image: redis:7-alpine
+    container_name: zhiwen-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - zhiwen-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  zhiwen-pgdata:
+  zhiwen-redis-data:

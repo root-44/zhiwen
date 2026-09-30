@@ -1,0 +1,9 @@
+# 开发环境覆盖配置
+#
+# API Key 获取方式(阿里云百炼 DashScope):
+#   1. 打开 https://bailian.console.aliyun.com/ 用支付宝/淘宝扫码登录
+#   2. 首次进入开通百炼服务,完成个人实名认证(免费)
+#   3. 控制台左侧「API-KEY」→「创建我的 API-KEY」,复制 sk-xxx
+#   4. Windows PowerShell 临时设置(当前窗口生效):
+#        $env:DASHSCOPE_API_KEY="sk-你的密钥"
+#      切勿把真实密钥提交到公开仓库
