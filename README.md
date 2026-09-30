@@ -16,6 +16,22 @@
 - SSE 流式回答 + 多轮对话(滑动窗口)
 - JMeter 三场景压测 + 性能瓶颈定位与优化
 
+## 截图展示
+
+### 问答界面（回答 + 引用溯源）
+
+![问答界面 1](docs/screenshots/chat-with-sources1.png)
+
+![问答界面 2](docs/screenshots/chat-with-sources2.png)
+
+### 文档管理面板
+
+![文档面板](docs/screenshots/document-panel.png)
+
+### 多轮会话列表
+
+![会话列表](docs/screenshots/conversation-list.png)
+
 ## 架构
 
 ```
